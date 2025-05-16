@@ -1,3 +1,4 @@
+
 import torch, torch.nn as nn, random, numpy as np, evaluate
 from datasets import load_dataset
 from peft import PeftModel
@@ -51,6 +52,7 @@ qa_model = get_peft_model(qa_model, qa_lora).to(device)
 
 
 # Load the SQuAD dataset
+def hr(t): print("\n" + "═"*15 + " " + t + " " + "═"*15)
 hr("Training QA")
 raw_qa = load_dataset("squad", split="train[:80000]")
 
@@ -195,10 +197,9 @@ PeftModel.from_pretrained(GPT2Model.from_pretrained("gpt2"),
                          "qa-lora"
 )
 
-def hr(t): print("\n" + "═"*15 + " " + t + " " + "═"*15)
+
 hr("Evaluation")
 
-# ── 4-C  Extractive QA ───────────────────────────────────────
 metric_squad = evaluate.load("squad")
 val_qa = load_dataset("squad", split="validation[:5000]")
 
