@@ -9,8 +9,13 @@ from transformers import (
     TrainingArguments, Trainer,BitsAndBytesConfig
 )
 from peft import LoraConfig, get_peft_model, TaskType
+from sklearn.metrics import classification_report
 
-device = "cuda" if torch.cuda.is_available() else "cpu"
+device = (
+    "mps" if torch.backends.mps.is_available() else
+    "cuda" if torch.cuda.is_available() else "cpu"
+)
+
 SEED = 42
 torch.manual_seed(SEED); np.random.seed(SEED); random.seed(SEED)
 
@@ -76,11 +81,10 @@ def tok_sent(ex):
     return tok(ex["title"] + " " + ex["content"],
                truncation=True, max_length=256)
 
-train_s = raw["train"].shuffle(seed=SEED).select(range(100000)).map(tok_sent)
+train_s = raw["train"].shuffle(seed=SEED).select(range(200000)).map(tok_sent)
 val_s   = raw["test"] .select(range(20000)).map(tok_sent)
 train_s = train_s.rename_column("label", "labels")
 val_s   = val_s.rename_column("label", "labels")
-
 args_s = TrainingArguments(
     output_dir="sent-qlora",
     num_train_epochs=3,
@@ -109,7 +113,7 @@ base = GPT2Model.from_pretrained("gpt2")
 sent_adapter = PeftModel.from_pretrained(base, "sent-qlora")
 hr("Evaluation")
 
-sent_val = load_dataset("amazon_polarity", split="test[:10000]")
+sent_val = load_dataset("amazon_polarity", split="test[:20000]")
 preds, refs = [], []
 for ex in tqdm.tqdm(sent_val, desc="Sentiment"):
     enc = tok(ex["title"] + " " + ex["content"],
@@ -121,3 +125,5 @@ for ex in tqdm.tqdm(sent_val, desc="Sentiment"):
 acc = evaluate.load("accuracy").compute(predictions=preds, references=refs)["accuracy"]
 f1  = evaluate.load("f1").compute(predictions=preds, references=refs)["f1"]
 print(f"Sentiment –  Acc: {acc:.4f}   F1: {f1:.4f}")
+print("Classification Report:")
+print(classification_report(refs, preds, target_names=["negative","positive"]))

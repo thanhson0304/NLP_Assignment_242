@@ -10,7 +10,10 @@ from transformers import (
 )
 from peft import LoraConfig, get_peft_model, TaskType
 
-device = "cuda" if torch.cuda.is_available() else "cpu"
+device = (
+    "mps" if torch.backends.mps.is_available() else
+    "cuda" if torch.cuda.is_available() else "cpu"
+)
 SEED = 42
 torch.manual_seed(SEED); np.random.seed(SEED); random.seed(SEED)
 
@@ -130,7 +133,7 @@ train_qa = raw_qa.map(
 train_qa = train_qa.filter(lambda ex: ex["start_positions"] is not None)
 
 # Validation set preparation
-val_raw = load_dataset("squad", split="validation[:5000]")
+val_raw = load_dataset("squad", split="validation[:10000]")
 val_qa = val_raw.map(
     tok_qa,
     batched=False,
@@ -216,7 +219,7 @@ PeftModel.from_pretrained(GPT2Model.from_pretrained("gpt2"),
 
 hr("Evaluation")
 metric_squad = evaluate.load("squad")
-val_qa = load_dataset("squad", split="validation[:5000]")
+val_qa = load_dataset("squad", split="validation[:10000]")
 
 pred_list, ref_list = [], []
 for i, ex in enumerate(tqdm.tqdm(val_qa, desc="QA")):

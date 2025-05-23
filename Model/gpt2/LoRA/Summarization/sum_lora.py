@@ -25,6 +25,7 @@ torch.manual_seed(SEED)
 tok = GPT2TokenizerFast.from_pretrained("gpt2")
 tok.add_special_tokens({"additional_special_tokens": ["<sum>"]})
 tok.pad_token = tok.eos_token
+tok.padding_side = "left" 
 print(f"Device: {device}")
 model = AutoModelForCausalLM.from_pretrained("gpt2")
 model.resize_token_embeddings(len(tok))
@@ -58,8 +59,8 @@ class GPT2Summarizer(nn.Module):
 
     def generate(self, *args, **kwargs):
         return self.base.generate(*args, **kwargs)
-train_raw = load_dataset("cnn_dailymail", "3.0.0", split="train[:100]")
-val_raw   = load_dataset("cnn_dailymail", "3.0.0", split="validation[:10]")
+train_raw = load_dataset("cnn_dailymail", "3.0.0", split="train[:100000]")
+val_raw   = load_dataset("cnn_dailymail", "3.0.0", split="validation[:10000]")
 rouge     = evaluate.load("rouge")
 
 def preprocess(example):
@@ -83,7 +84,7 @@ args = TrainingArguments(
     fp16=(device == "cuda"),
     learning_rate=5e-5,
     weight_decay=0.01,
-    num_train_epochs=2,
+    num_train_epochs=3,
     warmup_steps=50,
     lr_scheduler_type="cosine",
     eval_strategy="epoch",
@@ -106,7 +107,7 @@ trainer.train()
 model.save_pretrained("sum-lora")        
 tok.save_pretrained("sum-lora") 
 preds, refs = [], []
-for ex in val_raw.select(range(10)):
+for ex in val_raw.select(range(10000)):
     inputs = tok(
         "<sum> " + ex["article"],
         return_tensors="pt",
